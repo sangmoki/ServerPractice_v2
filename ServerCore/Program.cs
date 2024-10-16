@@ -8,6 +8,35 @@ namespace ServerCore
 {
     class Program
     {
+        // Listener 클래스 객체 생성
+        static Listener _listener = new Listener();
+
+        static void OnAcceptHandler(Socket clientSocket)
+        {
+            try
+            {
+                // 클라이언트가 보낸 메세지를 받는다. - 바이트 단위로
+                byte[] recvBuff = new byte[1024];
+                int recvBytes = clientSocket.Receive(recvBuff);
+                // UTF8로 인코딩하여 클라이언트가 보낸 메시지를 가져온다.
+                string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
+                Console.WriteLine($"[From Client] {recvData}");
+
+                // 클라이언트보낸다
+                byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+                clientSocket.Send(sendBuff);
+
+                // 클라이언트 연결 종료
+                clientSocket.Shutdown(SocketShutdown.Both);
+                clientSocket.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+
+        }
+
         static void Main(string[] args)
         {
             // Socket 생성 시 인자
@@ -27,46 +56,42 @@ namespace ServerCore
 
             // 소켓 생성 (문지기 역할)
             // TCP로 진행하는데, TCP로 할 때는 SocketType을 Stream으로 맞춰주어야 한다.
-            Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            // Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            try
+            _listener.Init(endPoint, OnAcceptHandler);
+
+            // 소켓 교육
+            // listenSocket.Bind(endPoint);
+
+            // 소켓 대기열 - backlog : 최대 대기 수
+            // 10개의 클라이언트가 대기하며, 10개 초과 시 거부한다.
+            // listenSocket.Listen(10);
+
+            // 프로그램이 종료되지 않도록 임시로 반복 사용
+            while (true)
             {
-                // 소켓 교육
-                listenSocket.Bind(endPoint);
+                // Console.WriteLine("Listening...");
 
-                // 소켓 대기열 - backlog : 최대 대기 수
-                // 10개의 클라이언트가 대기하며, 10개 초과 시 거부한다.
-                listenSocket.Listen(10);
+                // 클라이언트를 입장시킨다.
+                // 실제로 사용하지는 않지만 연습용도로 입장 허용
+                // 다음 단계로 넘어갈 수 없으면 대기열에서 기다린다.
+                // Socket clientSocket = _listener.Accept();
 
-                while (true)
-                {
-                    Console.WriteLine("Listening...");
+                // 클라이언트가 보낸 메세지를 받는다. - 바이트 단위로
+                // byte[] recvBuff = new byte[1024];
+                // int recvBytes = clientSocket.Receive(recvBuff);
+                // UTF8로 인코딩하여 클라이언트가 보낸 메시지를 가져온다.
+                // string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
+                // Console.WriteLine($"[From Client] {recvData}");
 
-                    // 클라이언트를 입장시킨다.
-                    // 실제로 사용하지는 않지만 연습용도로 입장 허용
-                    // 다음 단계로 넘어갈 수 없으면 대기열에서 기다린다.
-                    Socket clientSocket = listenSocket.Accept();
+                // 클라이언트보낸다
+                // byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+                // clientSocket.Send(sendBuff);
 
-                    // 클라이언트가 보낸 메세지를 받는다. - 바이트 단위로
-                    byte[] recvBuff = new byte[1024];
-                    int recvBytes = clientSocket.Receive(recvBuff);
-                    // UTF8로 인코딩하여 클라이언트가 보낸 메시지를 가져온다.
-                    string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
-                    Console.WriteLine($"[From Client] {recvData}");
+                // 클라이언트 연결 종료
+                // clientSocket.Shutdown(SocketShutdown.Both);
+                // clientSocket.Close();
 
-                    // 클라이언트보낸다
-                    byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-                    clientSocket.Send(sendBuff);
-
-                    // 클라이언트 연결 종료
-                    clientSocket.Shutdown(SocketShutdown.Both);
-                    clientSocket.Close();
-
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
             }
         }
     }
