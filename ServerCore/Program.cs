@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace ServerCore
@@ -7,7 +10,64 @@ namespace ServerCore
     {
         static void Main(string[] args)
         {
+            // Socket 생성 시 인자
+            // 첫번 째 인자 - 네트워크
+            // 두번 째 인자 - 소켓 타입
+            // 세번 째 인자 - 프로토콜
 
+            // 첫 번째 인자 - DNS 사용
+            // 내 로컬의 dns를 사용하여 호스트 이름을 가져온다.
+            string host = Dns.GetHostName();
+            // 호스트 이름을 이용하여 IPHostEntry를 가져온다.
+            IPHostEntry ipHost = Dns.GetHostEntry(host);
+            // 트래픽이 많이 들어오는 경우 AddressList를 사용하여 트래픽을 분산시킬 수 있다.
+            IPAddress ipAddr = ipHost.AddressList[0];
+            // 포트 번호를 지정하여 IPEndPoint를 생성한다.
+            IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
+
+            // 소켓 생성 (문지기 역할)
+            // TCP로 진행하는데, TCP로 할 때는 SocketType을 Stream으로 맞춰주어야 한다.
+            Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+            try
+            {
+                // 소켓 교육
+                listenSocket.Bind(endPoint);
+
+                // 소켓 대기열 - backlog : 최대 대기 수
+                // 10개의 클라이언트가 대기하며, 10개 초과 시 거부한다.
+                listenSocket.Listen(10);
+
+                while (true)
+                {
+                    Console.WriteLine("Listening...");
+
+                    // 클라이언트를 입장시킨다.
+                    // 실제로 사용하지는 않지만 연습용도로 입장 허용
+                    // 다음 단계로 넘어갈 수 없으면 대기열에서 기다린다.
+                    Socket clientSocket = listenSocket.Accept();
+
+                    // 클라이언트가 보낸 메세지를 받는다. - 바이트 단위로
+                    byte[] recvBuff = new byte[1024];
+                    int recvBytes = clientSocket.Receive(recvBuff);
+                    // UTF8로 인코딩하여 클라이언트가 보낸 메시지를 가져온다.
+                    string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
+                    Console.WriteLine($"[From Client] {recvData}");
+
+                    // 클라이언트보낸다
+                    byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+                    clientSocket.Send(sendBuff);
+
+                    // 클라이언트 연결 종료
+                    clientSocket.Shutdown(SocketShutdown.Both);
+                    clientSocket.Close();
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
     }
 
