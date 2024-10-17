@@ -12,6 +12,11 @@ namespace ServerCore
         Socket _socket;
         int _disconnected = 0;
 
+        object _lock = new object();
+        Queue<byte[]> _sendQueue = new Queue<byte[]>();
+        bool _pending = false;
+        SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
+
         public void Start(Socket socket)
         {
             _socket = socket;
@@ -20,13 +25,26 @@ namespace ServerCore
             
             // recevArgs에 버퍼를 할당해주어야 받을 수 있다.
             recvArgs.SetBuffer(new byte[1024], 0, 1024);
+
+            _sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
             // 버퍼를 할당받아 생성한다.
             RegisterRecv(recvArgs);
         }
 
         public void Send(byte[] sendBuff)
         {
-            _socket.Send(sendBuff);
+            // 한번에 하나의 스레드만 접근할 수 있도록 lock을 건다.
+            lock (_lock)
+            {
+                _sendQueue.Enqueue(sendBuff);
+                if (_pending == false)
+                    RegisterSend();
+            }
+
+            //_socket.Send(sendBuff);
+            //sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
+            //_sendArgs.SetBuffer(sendBuff, 0, sendBuff.Length);
+            //RegisterSend();
         }
 
         public void Disconnect()
@@ -41,6 +59,43 @@ namespace ServerCore
         }
 
         #region 네트워크 통신
+
+        void RegisterSend()
+        {
+            _pending = true;
+            byte[] buff = _sendQueue.Dequeue();
+            _sendArgs.SetBuffer(buff, 0, buff.Length);
+
+            bool pending = _socket.SendAsync(_sendArgs);
+            if (pending == false)
+                OnSendCompleted(null, _sendArgs);
+        }
+
+        void OnSendCompleted(object sender, SocketAsyncEventArgs args)
+        {
+            lock (_lock)
+            {
+                if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
+                {
+                    try
+                    {
+                        if (_sendQueue.Count > 0)
+                            RegisterSend();
+                        else
+                            _pending = false;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"OnSendCompleted Failed {e}");
+                    }
+                }
+                else
+                {
+                    Disconnect();
+                }
+            }
+        }
+
         void RegisterRecv(SocketAsyncEventArgs args)
         {
             // 보류중인 것이 없으면 다음 프로세스 진행
@@ -69,9 +124,7 @@ namespace ServerCore
             }
             else
             {
-                // 더 이상 받을 데이터가 없다면 소켓을 닫아준다.
-                _socket.Shutdown(SocketShutdown.Both);
-                _socket.Close();
+                Disconnect();
             }
         }
         #endregion
