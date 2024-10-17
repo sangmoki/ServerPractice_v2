@@ -16,19 +16,33 @@ namespace ServerCore
             try
             {
                 // 클라이언트가 보낸 메세지를 받는다. - 바이트 단위로
-                byte[] recvBuff = new byte[1024];
-                int recvBytes = clientSocket.Receive(recvBuff);
+                //byte[] recvBuff = new byte[1024];
+                //int recvBytes = clientSocket.Receive(recvBuff);
                 // UTF8로 인코딩하여 클라이언트가 보낸 메시지를 가져온다.
-                string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
-                Console.WriteLine($"[From Client] {recvData}");
+                //string recvData = Encoding.UTF8.GetString(recvBuff, 0, recvBytes);
+                //Console.WriteLine($"[From Client] {recvData}");
 
-                // 클라이언트보낸다
+
+                // Session 클래스 객체에 소켓을 넣어 초기화
+                Session session = new Session();
+                session.Start(clientSocket);
+
                 byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-                clientSocket.Send(sendBuff);
+                // 클라이언트보낸다
+                //clientSocket.Send(sendBuff);
+
+                session.Send(sendBuff);
+
+                Thread.Sleep(1000);
+
+                // Disconnect를 두번 하더라도
+                // InterLocked를 사용한 flag를 통해 문제 없이 작동한다.
+                session.Disconnect();
+                session.Disconnect();
 
                 // 클라이언트 연결 종료
-                clientSocket.Shutdown(SocketShutdown.Both);
-                clientSocket.Close();
+                //clientSocket.Shutdown(SocketShutdown.Both);
+                //clientSocket.Close();
             }
             catch (Exception e)
             {

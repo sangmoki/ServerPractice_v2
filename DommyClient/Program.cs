@@ -26,12 +26,14 @@ namespace DommyClient
                     socket.Connect(endPoint);
                     Console.WriteLine($"Connected To {socket.RemoteEndPoint.ToString()}");
 
-                    // 서버에게 보낼 데이터 생성
-                    byte[] sendBuff = Encoding.UTF8.GetBytes("Hello World!");
+                    for (int i = 0; i < 5; i++)
+                    {
+                        // 서버에게 보낼 데이터 생성
+                        byte[] sendBuff = Encoding.UTF8.GetBytes($"Hello World! {i}");
 
-                    // 서버에게 데이터 전송
-                    int sendBytes = socket.Send(sendBuff);
-
+                        // 서버에게 데이터 전송
+                        int sendBytes = socket.Send(sendBuff);
+                    }
                     // 서버에서 보낸 데이터 받기
                     byte[] recvBuff = new byte[1024];
                     int recvBytes = socket.Receive(recvBuff);
