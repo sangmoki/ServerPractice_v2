@@ -16,19 +16,19 @@ namespace ServerCore
         Queue<byte[]> _sendQueue = new Queue<byte[]>();
         bool _pending = false;
         SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
+        SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
 
         public void Start(Socket socket)
         {
             _socket = socket;
-            SocketAsyncEventArgs recvArgs = new SocketAsyncEventArgs();
-            recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
-            
+            _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
+
             // recevArgs에 버퍼를 할당해주어야 받을 수 있다.
-            recvArgs.SetBuffer(new byte[1024], 0, 1024);
+            _recvArgs.SetBuffer(new byte[1024], 0, 1024);
 
             _sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
             // 버퍼를 할당받아 생성한다.
-            RegisterRecv(recvArgs);
+            RegisterRecv();
         }
 
         public void Send(byte[] sendBuff)
@@ -96,12 +96,12 @@ namespace ServerCore
             }
         }
 
-        void RegisterRecv(SocketAsyncEventArgs args)
+        void RegisterRecv()
         {
             // 보류중인 것이 없으면 다음 프로세스 진행
-            bool pending = _socket.ReceiveAsync(args);
+            bool pending = _socket.ReceiveAsync(_recvArgs);
             if (pending == false)
-                OnRecvCompleted(null, args);
+                OnRecvCompleted(null, _recvArgs);
         }
 
         void OnRecvCompleted(object sender, SocketAsyncEventArgs args)
@@ -115,7 +115,7 @@ namespace ServerCore
                     Console.WriteLine($"[From Client] {recvData}");
 
                     // 다시 받기 위해 등록
-                    RegisterRecv(args);
+                    RegisterRecv();
                 }
                 catch (Exception e)
                 {
