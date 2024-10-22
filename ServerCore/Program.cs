@@ -3,15 +3,55 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using static System.Collections.Specialized.BitVector32;
 
 namespace ServerCore
 {
+    class GameSession : Session
+    {
+        public override void OnConnected(EndPoint endPoint)
+        {
+            Console.WriteLine($"OnConnected : {endPoint}");
+
+            byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+            // 클라이언트보낸다
+            //clientSocket.Send(sendBuff);
+
+            Send(sendBuff);
+
+            Thread.Sleep(1000);
+
+            // Disconnect를 두번 하더라도
+            // InterLocked를 사용한 flag를 통해 문제 없이 작동한다.
+            Disconnect();
+        }
+
+        public override void OnDisconnected(EndPoint endPoint)
+        {
+            Console.WriteLine($"OnDisconnected : {endPoint}");
+        }
+
+        // 클라이언트가 보낸 메세지를 받고 난 후 콜백 함수
+        public override void OnRecv(ArraySegment<byte> buffer)
+        {
+            string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+            Console.WriteLine($"[From Client] {recvData}");
+        }
+
+        // send 이후 콜백 함수
+        public override void OnSend(int numOfBytes)
+        {
+            Console.WriteLine($"Transferred bytes: {numOfBytes}");
+        }
+    }
+
     class Program
     {
         // Listener 클래스 객체 생성
         static Listener _listener = new Listener();
 
-        static void OnAcceptHandler(Socket clientSocket)
+        // 초기 핸들러 세팅
+        /*static void OnAcceptHandler(Socket clientSocket)
         {
             try
             {
@@ -24,7 +64,7 @@ namespace ServerCore
 
 
                 // Session 클래스 객체에 소켓을 넣어 초기화
-                Session session = new Session();
+                GameSession session = new GameSession();
                 session.Start(clientSocket);
 
                 byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
@@ -49,7 +89,7 @@ namespace ServerCore
                 Console.WriteLine(e.ToString());
             }
 
-        }
+        }*/
 
         static void Main(string[] args)
         {
@@ -72,7 +112,7 @@ namespace ServerCore
             // TCP로 진행하는데, TCP로 할 때는 SocketType을 Stream으로 맞춰주어야 한다.
             // Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            _listener.Init(endPoint, OnAcceptHandler);
+            _listener.Init(endPoint, () => { return new GameSession(); });
 
             // 소켓 교육
             // listenSocket.Bind(endPoint);

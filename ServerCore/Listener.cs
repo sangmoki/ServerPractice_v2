@@ -12,14 +12,16 @@ namespace ServerCore
     {
         // Socket 객체 생성
         Socket _listenSocket;
-        Action<Socket> _onAcceptHandler;
 
-        public void Init(IPEndPoint endPoint, Action<Socket> onAcceptHandler)
+        //Action<Socket> _onAcceptHandler;
+        Func<Session> _sessionFactory;
+
+        public void Init(IPEndPoint endPoint, Func<Session> sessionFactory)
         {            
             // 소켓 생성 (문지기 역할)
             // TCP로 진행하는데, TCP로 할 때는 SocketType을 Stream으로 맞춰주어야 한다.
             _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _onAcceptHandler += onAcceptHandler;
+            _sessionFactory += sessionFactory;
 
             // 소켓 교육
             _listenSocket.Bind(endPoint);
@@ -58,8 +60,13 @@ namespace ServerCore
             // 소켓 에러가 없을 시
             if (args.SocketError == SocketError.Success)
             {
+                // Session 클래스 객체에 소켓을 넣어 초기화
+                Session session = _sessionFactory.Invoke();
+                session.Start(args.AcceptSocket);
+                session.OnConnected(args.AcceptSocket.RemoteEndPoint);
+                
                 // Client Socket을 뱉어주는걸 여기서 해준다.
-                _onAcceptHandler.Invoke(args.AcceptSocket);
+                // _onAcceptHandler.Invoke(args.AcceptSocket);
             }
             else
                 Console.WriteLine(args.SocketError.ToString());
