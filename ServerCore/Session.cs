@@ -13,6 +13,8 @@ namespace ServerCore
         Socket _socket;
         int _disconnected = 0;
 
+        RecvBuffer _recvBuffer = new RecvBuffer(1024);
+
         object _lock = new object();
         Queue<byte[]> _sendQueue = new Queue<byte[]>();
         List<ArraySegment<byte>> _pendingList = new List<ArraySegment<byte>>();
@@ -23,17 +25,13 @@ namespace ServerCore
         {
             _socket = socket;
             _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
-
-            // recevArgs에 버퍼를 할당해주어야 받을 수 있다.
-            _recvArgs.SetBuffer(new byte[1024], 0, 1024);
-
             _sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
             // 버퍼를 할당받아 생성한다.
             RegisterRecv();
         }
 
         public abstract void OnConnected(EndPoint endPoint);
-        public abstract void OnRecv(ArraySegment<byte> buffer);
+        public abstract int OnRecv(ArraySegment<byte> buffer);
         public abstract void OnSend(int numOfBytes);
         public abstract void OnDisconnected(EndPoint endPoint);
 
@@ -113,6 +111,12 @@ namespace ServerCore
 
         void RegisterRecv()
         {
+            // 커서가 너무 뒤로 이동하는 것을 방지
+            _recvBuffer.Clean();
+
+            ArraySegment<byte> segment = _recvBuffer.WriteSegment;
+            _recvArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+
             // 보류중인 것이 없으면 다음 프로세스 진행
             bool pending = _socket.ReceiveAsync(_recvArgs);
             if (pending == false)
@@ -125,8 +129,32 @@ namespace ServerCore
             {
                 try
                 {
+                    // Write커서 이동 - 데이터를 전송받으면 이동
+                    if (_recvBuffer.OnWrite(args.BytesTransferred) == false)
+                    {
+                        // false 일 시 연결 종료
+                        Disconnect();
+                        return;
+                    }
+
+                    // 컨텐츠 쪽으로 데이터를 넘겨주고 얼마나 처리했는지 받는다.
+                    int processLen = OnRecv(_recvBuffer.ReadSegment);
+                    if (processLen < 0 || _recvBuffer.DataSize < processLen)
+                    {
+                        Disconnect();
+                        return;
+                    }
+
+                    // Read 커서 이동
+                    if (_recvBuffer.OnRead(processLen) == false)
+                    {
+                        Disconnect();
+                        return;
+                    }
+
                     // 받은 데이터 처리 콜백 함수 호출
-                    OnRecv(new ArraySegment<byte>(args.Buffer, args.Offset, args.BytesTransferred));
+                    //OnRecv(new ArraySegment<byte>(args.Buffer, args.Offset, args.BytesTransferred));
+
                     // 다시 받기 위해 등록
                     RegisterRecv();
                 }
