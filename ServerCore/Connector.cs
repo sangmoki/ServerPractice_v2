@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace ServerCore
 {
     // Listner의 반대 역할을 하는 Connector 클래스
-    class Connector
+    public class Connector
     {
         Func<Session> _sessionFactory;
 
