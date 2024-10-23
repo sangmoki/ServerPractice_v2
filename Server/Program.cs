@@ -8,18 +8,40 @@ using ServerCore;
 
 namespace Server
 {
+    class Knight
+    {
+        public int hp;
+        public int attack;
+        public string name;
+        public List<int> skills = new List<int>();
+    }
+
     class GameSession : Session
     {
         public override void OnConnected(EndPoint endPoint)
         {
             Console.WriteLine($"OnConnected : {endPoint}");
 
-            byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
-            // 클라이언트보낸다
+            Knight knight = new Knight() { hp = 100, attack = 10 };
+            
+            ArraySegment<byte> openSegment = SendBufferHelper.Open(4096);
+
+            // int 형 값을 byte 배열로 변환하여 보낸다.
+            byte[] buffer = BitConverter.GetBytes(knight.hp);
+            byte[] buffer2 = BitConverter.GetBytes(knight.attack);
+
+            // 열어 준 세그먼트에 복사한다.
+            Array.Copy(buffer, 0, openSegment.Array, openSegment.Offset, buffer.Length);
+            Array.Copy(buffer2, 0, openSegment.Array, openSegment.Offset + buffer.Length, buffer2.Length);
+            ArraySegment<byte> sendBuff = SendBufferHelper.Close(buffer.Length + buffer2.Length);
+
+            //Encoding.UTF8.GetBytes("Welcome to MMORPG Server!");
+
+            
+                // 클라이언트보낸다
             //clientSocket.Send(sendBuff);
 
             Send(sendBuff);
-
             Thread.Sleep(1000);
 
             // Disconnect를 두번 하더라도

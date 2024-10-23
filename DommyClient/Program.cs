@@ -29,10 +29,12 @@ namespace DommyClient
         }
 
         // 클라이언트가 보낸 메세지를 받고 난 후 콜백 함수
-        public override void OnRecv(ArraySegment<byte> buffer)
+        public override int OnRecv(ArraySegment<byte> buffer)
         {
             string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
             Console.WriteLine($"[From Server] {recvData}");
+
+            return buffer.Count;
         }
 
         // send 이후 콜백 함수
