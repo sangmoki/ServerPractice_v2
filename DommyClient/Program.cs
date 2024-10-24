@@ -7,16 +7,34 @@ using System.Threading;
 
 namespace DommyClient
 {
+    class Packet
+    {
+        public ushort size;
+        public ushort packetId;
+    }
+
     class GameSession : Session
     {
         public override void OnConnected(EndPoint endPoint)
         {
             Console.WriteLine($"OnConnected : {endPoint}");
+            Packet packet = new Packet() { size = 4, packetId = 7 };
 
             for (int i = 0; i < 5; i++)
             {
+                ArraySegment<byte> openSegment = SendBufferHelper.Open(4096);
+
+                // int 형 값을 byte 배열로 변환하여 보낸다.
+                byte[] buffer = BitConverter.GetBytes(packet.size);
+                byte[] buffer2 = BitConverter.GetBytes(packet.packetId);
+
+                // 열어 준 세그먼트에 복사한다.
+                Array.Copy(buffer, 0, openSegment.Array, openSegment.Offset, buffer.Length);
+                Array.Copy(buffer2, 0, openSegment.Array, openSegment.Offset + buffer.Length, buffer2.Length);
+                ArraySegment<byte> sendBuff = SendBufferHelper.Close(packet.size);
+
                 // 서버에게 보낼 데이터 생성
-                byte[] sendBuff = Encoding.UTF8.GetBytes($"Hello World! {i}");
+                //byte[] sendBuff = Encoding.UTF8.GetBytes($"Hello World! {i}");
 
                 // 서버에 데이터 전송
                 Send(sendBuff);
