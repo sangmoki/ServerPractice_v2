@@ -20,7 +20,7 @@ namespace DommyClient
 
             // 커넥터 연결 및 세션 생성
             Connector connector = new Connector();
-            connector.Connect(endPoint, () => { return new GameSession(); });
+            connector.Connect(endPoint, () => { return new ServerSession(); });
 
             while (true)
             {            

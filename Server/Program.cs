@@ -76,7 +76,7 @@ namespace Server
             // TCP로 진행하는데, TCP로 할 때는 SocketType을 Stream으로 맞춰주어야 한다.
             // Socket listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            _listener.Init(endPoint, () => { return new GameSession(); });
+            _listener.Init(endPoint, () => { return new ClientSession(); });
 
             // 소켓 교육
             // listenSocket.Bind(endPoint);
