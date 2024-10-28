@@ -1,19 +1,33 @@
-﻿using ServerCore;
+﻿using Server;
+using ServerCore;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 class PacketHandler
 {
-	public static void C_PlayerInfoReqHandler(PacketSession session, IPacket packet)
+	public static void C_LeaveGameHandler(PacketSession session, IPacket packet)
 	{
-		C_PlayerInfoReq p = packet as C_PlayerInfoReq;
+		ClientSession clientSession = session as ClientSession;
 
-		Console.WriteLine($"PlayerInfoReq: {p.playerId} {p.name}");
+		if (clientSession.Room == null)
+			return;
 
-		foreach (C_PlayerInfoReq.Skill skill in p.skills)
-		{
-			Console.WriteLine($"Skill({skill.id})({skill.level})({skill.duration})");
-		}
+		GameRoom room = clientSession.Room;
+		room.Push(() => room.Leave(clientSession));
+	}
+
+	public static void C_MoveHandler(PacketSession session, IPacket packet)
+	{
+		C_Move movePacket = packet as C_Move;
+		ClientSession clientSession = session as ClientSession;
+
+		if (clientSession.Room == null)
+			return;
+
+		//Console.WriteLine($"{movePacket.posX}, {movePacket.posY}, {movePacket.posZ}");
+
+		GameRoom room = clientSession.Room;
+		room.Push(() => room.Move(clientSession, movePacket));
 	}
 }
