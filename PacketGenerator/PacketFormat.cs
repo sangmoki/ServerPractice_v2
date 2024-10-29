@@ -12,7 +12,7 @@ namespace PacketGenerator
 using System;
 using System.Collections.Generic;
 
-public class PacketManager
+class PacketManager
 {{
 	#region Singleton
 	static PacketManager _instance = new PacketManager();
@@ -24,7 +24,7 @@ public class PacketManager
 		Register();
 	}}
 
-	Dictionary<ushort, Func<PacketSession, ArraySegment<byte>, IPacket>> _makeFunc = new Dictionary<ushort, Func<PacketSession, ArraySegment<byte>, IPacket>>();
+	Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>> _onRecv = new Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>>();
 	Dictionary<ushort, Action<PacketSession, IPacket>> _handler = new Dictionary<ushort, Action<PacketSession, IPacket>>();
 		
 	public void Register()
@@ -32,7 +32,7 @@ public class PacketManager
 {0}
 	}}
 
-	public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer, Action<PacketSession, IPacket> onRecvCallback = null)
+	public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer)
 	{{
 		ushort count = 0;
 
@@ -41,35 +41,24 @@ public class PacketManager
 		ushort id = BitConverter.ToUInt16(buffer.Array, buffer.Offset + count);
 		count += 2;
 
-		Func<PacketSession, ArraySegment<byte>, IPacket> func = null;
-		if (_makeFunc.TryGetValue(id, out func))
-		{{
-			IPacket packet = func.Invoke(session, buffer);
-			if (onRecvCallback != null)
-				onRecvCallback.Invoke(session, packet);
-			else
-				HandlePacket(session, packet);
-		}}
+		Action<PacketSession, ArraySegment<byte>> action = null;
+		if (_onRecv.TryGetValue(id, out action))
+			action.Invoke(session, buffer);
 	}}
 
-	T MakePacket<T>(PacketSession session, ArraySegment<byte> buffer) where T : IPacket, new()
+	void MakePacket<T>(PacketSession session, ArraySegment<byte> buffer) where T : IPacket, new()
 	{{
 		T pkt = new T();
 		pkt.Read(buffer);
-		return pkt;
-	}}
-
-	public void HandlePacket(PacketSession session, IPacket packet)
-	{{
 		Action<PacketSession, IPacket> action = null;
-		if (_handler.TryGetValue(packet.Protocol, out action))
-			action.Invoke(session, packet);
+		if (_handler.TryGetValue(pkt.Protocol, out action))
+			action.Invoke(session, pkt);
 	}}
 }}";
 
 		// {0} 패킷 이름
 		public static string managerRegisterFormat =
-@"		_makeFunc.Add((ushort)PacketID.{0}, MakePacket<{0}>);
+@"		_onRecv.Add((ushort)PacketID.{0}, MakePacket<{0}>);
 		_handler.Add((ushort)PacketID.{0}, PacketHandler.{0}Handler);";
 
 		// {0} 패킷 이름/번호 목록
@@ -86,7 +75,7 @@ public enum PacketID
 	{0}
 }}
 
-public interface IPacket
+interface IPacket
 {{
 	ushort Protocol {{ get; }}
 	void Read(ArraySegment<byte> segment);
@@ -108,7 +97,7 @@ public interface IPacket
 		// {3} 멤버 변수 Write
 		public static string packetFormat =
 @"
-public class {0} : IPacket
+class {0} : IPacket
 {{
 	{1}
 
